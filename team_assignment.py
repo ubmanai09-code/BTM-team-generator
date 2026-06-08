@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 import random
 import sqlite3
 from pathlib import Path
+import zipfile
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 
@@ -69,6 +70,7 @@ class TournamentTeamManager:
 
     def lock_player(self, player_id: int) -> None:
         self._require_current_player(player_id)
+        self._find_player(player_id)
         self.locked_player_ids.add(player_id)
 
     def unlock_player(self, player_id: int) -> None:
@@ -77,6 +79,8 @@ class TournamentTeamManager:
     def move_player(self, player_id: int, to_team_id: int, swap_with_player_id: Optional[int] = None) -> None:
         self._require_current_player(player_id)
         src_idx, src_pos = self._find_player(player_id)
+        if not isinstance(to_team_id, int):
+            raise TeamAssignmentError("target team id must be an integer")
         if to_team_id < 1 or to_team_id > len(self.teams):
             raise TeamAssignmentError("target team does not exist")
         dst_idx = to_team_id - 1
@@ -205,13 +209,21 @@ class TournamentTeamManager:
     def export_excel(self, file_path: str) -> None:
         if not self.teams:
             raise TeamAssignmentError("no teams to export")
-        rows = ["Team ID,Player ID,Name,Gender,Average Score,Handicap,Division"]
+        rows: List[List[str]] = [["Team ID", "Player ID", "Name", "Gender", "Average Score", "Handicap", "Division"]]
         for team in self.teams:
             for p in team.players:
                 rows.append(
-                    f"{team.id},{p.id},{_csv_escape(p.name)},{_csv_escape(p.gender)},{p.average_score},{'' if p.handicap is None else p.handicap},{'' if p.division is None else _csv_escape(p.division)}"
+                    [
+                        str(team.id),
+                        str(p.id),
+                        p.name,
+                        p.gender,
+                        str(p.average_score),
+                        "" if p.handicap is None else str(p.handicap),
+                        "" if p.division is None else p.division,
+                    ]
                 )
-        Path(file_path).write_text("\n".join(rows) + "\n", encoding="utf-8")
+        _write_basic_xlsx(file_path, rows)
 
     def export_pdf(self, file_path: str) -> None:
         if not self.teams:
@@ -241,8 +253,8 @@ class TournamentTeamManager:
 
         teams_needing_female = [team for team in self.teams if team.female_count < self.min_female_per_team]
         female_unassigned = sorted((p for p in unassigned if p.is_female), key=lambda p: p.average_score, reverse=True)
-        missing_female_slots = sum(self.min_female_per_team - team.female_count for team in teams_needing_female)
-        if len(female_unassigned) < missing_female_slots:
+        required_additional_females = sum(self.min_female_per_team - team.female_count for team in teams_needing_female)
+        if len(female_unassigned) < required_additional_females:
             raise TeamAssignmentError("not enough female players to satisfy team constraints with current locks")
 
         for team in sorted(teams_needing_female, key=lambda t: t.total_average):
@@ -267,8 +279,8 @@ class TournamentTeamManager:
         if len(available) == 1 or self.randomness <= 0:
             return available[0]
 
-        random_pool_size = max(1, int(round(len(available) * self.randomness)))
-        random_pool_size = min(len(available), random_pool_size + 1)
+        randomness_based_size = max(1, int(round(len(available) * self.randomness)))
+        random_pool_size = min(len(available), randomness_based_size + 1)
         return self._rng.choice(available[:random_pool_size])
 
     def _validate_player_pool(self, players: Sequence[Player]) -> None:
@@ -312,16 +324,11 @@ class TournamentTeamManager:
             raise TeamAssignmentError("unknown player id")
 
 
-
-def _csv_escape(value: str) -> str:
-    escaped = value.replace('"', '""')
-    if "," in value or '"' in value:
-        return f'"{escaped}"'
-    return value
-
-
 def _write_basic_pdf(file_path: str, lines: Iterable[str]) -> None:
-    text_lines = [line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)") for line in lines]
+    text_lines = [
+        line.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+        for line in lines
+    ]
     content_rows = ["BT", "/F1 12 Tf", "72 780 Td", "14 TL"]
     first = True
     for line in text_lines:
@@ -331,7 +338,7 @@ def _write_basic_pdf(file_path: str, lines: Iterable[str]) -> None:
         else:
             content_rows.append(f"T* ({line}) Tj")
     content_rows.append("ET")
-    stream_data = "\n".join(content_rows).encode("latin-1", errors="replace")
+    stream_data = "\n".join(content_rows).encode("latin-1", errors="replace")  # Unsupported characters degrade safely.
 
     objects: List[bytes] = []
     objects.append(b"1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n")
@@ -365,3 +372,110 @@ def _write_basic_pdf(file_path: str, lines: Iterable[str]) -> None:
         ).encode("ascii")
     )
     Path(file_path).write_bytes(bytes(output))
+
+
+def _write_basic_xlsx(file_path: str, rows: Sequence[Sequence[str]]) -> None:
+    path = Path(file_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    sheet_rows = []
+    for row_idx, row in enumerate(rows, start=1):
+        cells = []
+        for col_idx, value in enumerate(row, start=1):
+            ref = f"{_xlsx_col(col_idx)}{row_idx}"
+            if _is_number(value):
+                cells.append(f'<c r="{ref}"><v>{value}</v></c>')
+            else:
+                cells.append(f'<c r="{ref}" t="inlineStr"><is><t>{_xml_escape(value)}</t></is></c>')
+        sheet_rows.append(f'<row r="{row_idx}">{"".join(cells)}</row>')
+
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f'<sheetData>{"".join(sheet_rows)}</sheetData>'
+        "</worksheet>"
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<sheets><sheet name="Teams" sheetId="1" r:id="rId1"/></sheets>'
+        "</workbook>"
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" '
+        'Target="xl/workbook.xml"/>'
+        "</Relationships>"
+    )
+    workbook_rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" '
+        'Target="worksheets/sheet1.xml"/>'
+        '<Relationship Id="rId2" '
+        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" '
+        'Target="styles.xml"/>'
+        "</Relationships>"
+    )
+    styles_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        '<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>'
+        '<fills count="1"><fill><patternFill patternType="none"/></fill></fills>'
+        '<borders count="1"><border/></borders>'
+        '<cellStyleXfs count="1"><xf/></cellStyleXfs>'
+        '<cellXfs count="1"><xf xfId="0"/></cellXfs>'
+        "</styleSheet>"
+    )
+    content_types_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        '<Override PartName="/xl/styles.xml" '
+        'ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'
+        "</Types>"
+    )
+
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types_xml)
+        archive.writestr("_rels/.rels", rels_xml)
+        archive.writestr("xl/workbook.xml", workbook_xml)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_rels_xml)
+        archive.writestr("xl/styles.xml", styles_xml)
+        archive.writestr("xl/worksheets/sheet1.xml", sheet_xml)
+
+
+def _xlsx_col(index: int) -> str:
+    result = []
+    value = index
+    while value > 0:
+        value, rem = divmod(value - 1, 26)
+        result.append(chr(65 + rem))
+    return "".join(reversed(result))
+
+
+def _xml_escape(value: str) -> str:
+    return (
+        value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+        .replace("'", "&apos;")
+    )
+
+
+def _is_number(value: str) -> bool:
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False

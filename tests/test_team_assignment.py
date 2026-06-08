@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from team_assignment import Player, TeamAssignmentError, TournamentTeamManager
+from team_assignment import Player, TeamAssignmentError, TournamentTeamManager, _xlsx_col
 
 
 def sample_players(team_count: int = 4):
@@ -55,8 +55,8 @@ class TeamAssignmentTests(unittest.TestCase):
         locked_id = teams[0].players[0].id
         manager.lock_player(locked_id)
 
-        movable_from_team_two = next(p.id for p in teams[1].players if p.id not in manager.locked_player_ids)
-        manager.move_player(movable_from_team_two, to_team_id=1)
+        movable_from_second_team = next(p.id for p in teams[1].players if p.id not in manager.locked_player_ids)
+        manager.move_player(movable_from_second_team, to_team_id=1)
         manager.rebalance_remaining()
 
         src, _ = manager._find_player(locked_id)
@@ -78,12 +78,19 @@ class TeamAssignmentTests(unittest.TestCase):
             manager.save_to_database(str(db_file))
 
             self.assertTrue(excel_file.exists())
-            self.assertIn("Team ID,Player ID,Name", excel_file.read_text(encoding="utf-8"))
-            self.assertTrue(pdf_file.read_bytes().startswith(b"%PDF-1.4"))
+            self.assertTrue(excel_file.read_bytes().startswith(b"PK"))
+            pdf_bytes = pdf_file.read_bytes()
+            self.assertTrue(pdf_bytes.startswith(b"%PDF-1.4"))
+            self.assertIn(b"Tournament Teams", pdf_bytes)
 
             loaded = TournamentTeamManager.load_from_database(str(db_file))
             self.assertEqual(len(loaded), 4)
             self.assertTrue(all(len(t.players) == 3 for t in loaded))
+
+    def test_xlsx_column_conversion_edges(self):
+        self.assertEqual(_xlsx_col(26), "Z")
+        self.assertEqual(_xlsx_col(27), "AA")
+        self.assertEqual(_xlsx_col(702), "ZZ")
 
 
 if __name__ == "__main__":

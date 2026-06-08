@@ -8,7 +8,7 @@ A team generating tool for BTM application.
 - Slightly randomized but fairness-first assignment strategy.
 - Admin operations through API: generate teams, lock players, move players, rebalance unlocked players.
 - Persistence to SQLite database.
-- Export generated teams to Excel-compatible CSV (`.xlsx` filename supported) and PDF.
+- Export generated teams to `.xlsx` Excel files and PDF.
 
 ## Quick usage
 ```python
@@ -31,3 +31,5 @@ manager.save_to_database("teams.db")
 ```bash
 python -m unittest -q tests/test_team_assignment.py
 ```
+
+Note: PDF export uses Latin-1 compatible text; unsupported characters are safely normalized during output.
