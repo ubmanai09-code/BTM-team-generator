@@ -1,0 +1,16 @@
+{
+  "name": "btm-team-generator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run -ws build",
+    "dev": "npm run -w apps/api dev & npm run -w apps/web dev",
+    "test": "npm run -ws test",
+    "lint": "npm run -ws lint"
+  }
+}

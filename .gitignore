@@ -1,0 +1,11 @@
+node_modules
+.next
+.next-dev
+apps/web/.next-dev
+dist
+coverage
+.env
+*.log
+pnpm-lock.yaml
+package-lock.json
+.prisma
