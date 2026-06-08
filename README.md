@@ -89,3 +89,17 @@ Implemented in [packages/team-core/src/fairness.ts](packages/team-core/src/fairn
 
 - Algorithm pseudocode: [docs/pseudocode.md](docs/pseudocode.md)
 - Optimization recommendations: [docs/optimization-recommendations.md](docs/optimization-recommendations.md)
+
+## Static Deployment Option
+
+A simplified, self-contained version of the team generator is available in the [`static/`](static/) folder.  
+It runs entirely in the browser with no Node.js, no database, and no build step required.
+
+**Use case:** Upload directly to a static subdomain on Hostinger (or any static host) via File Manager or FTP.
+
+Files to upload:
+- `static/index.html`
+- `static/style.css`
+- `static/app.js`
+
+See [`static/README.md`](static/README.md) for full deployment instructions.
