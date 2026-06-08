@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BTM Team Generator</title>
+  <meta name="description" content="Generate balanced, random teams from a list of participant names — no backend required." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────── -->
+  <header class="header">
+    <h1 class="header__title">BTM Team Generator</h1>
+    <span class="header__badge">Static Edition</span>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Left column: Input panel -->
+    <div class="card">
+      <p class="card__title">Participants</p>
+
+      <div class="field">
+        <label for="names-input">
+          Participant names
+          <span id="participant-count" style="font-weight:400; color:var(--muted); margin-left:8px;">0 participants</span>
+        </label>
+        <textarea
+          id="names-input"
+          placeholder="Paste names here, one per line:&#10;Alice&#10;Bob&#10;Carol&#10;David&#10;&#10;You can also use commas or semicolons."
+          rows="10"
+        ></textarea>
+        <span class="hint">Each line becomes one participant. Duplicates are ignored.</span>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-clear" class="btn btn--danger" type="button">
+          ✕ Clear
+        </button>
+      </div>
+    </div>
+
+    <!-- Right column: Settings panel -->
+    <div class="card">
+      <p class="card__title">Settings</p>
+
+      <!-- Mode tabs -->
+      <div class="mode-tabs" role="group" aria-label="Team size mode">
+        <button class="mode-tab active" data-mode="count" type="button">By team count</button>
+        <button class="mode-tab" data-mode="size" type="button">By team size</button>
+      </div>
+
+      <!-- Count mode -->
+      <div id="field-count" class="field">
+        <label for="input-count">Number of teams</label>
+        <input
+          id="input-count"
+          type="number"
+          min="1"
+          max="100"
+          value="2"
+        />
+        <span class="hint">How many teams should be created. Participants are distributed evenly.</span>
+      </div>
+
+      <!-- Size mode (hidden initially) -->
+      <div id="field-size" class="field" style="display:none;">
+        <label for="input-size">Team size</label>
+        <input
+          id="input-size"
+          type="number"
+          min="1"
+          max="500"
+          value="5"
+        />
+        <span class="hint">How many members per team. Leftover participants will be listed separately.</span>
+      </div>
+
+      <div class="btn-row">
+        <button id="btn-generate" class="btn btn--primary" type="button">
+          ⚡ Generate Teams
+        </button>
+      </div>
+
+      <p style="margin-top:14px; font-size:0.8rem; color:var(--muted);">
+        Tip: Press <kbd style="background:#eef2f8;border:1px solid var(--line);border-radius:4px;padding:1px 5px;">Ctrl</kbd>+<kbd style="background:#eef2f8;border:1px solid var(--line);border-radius:4px;padding:1px 5px;">Enter</kbd> to generate.
+      </p>
+    </div>
+
+    <!-- Full-width results panel -->
+    <section id="results-section" class="card card--full" style="display:none;">
+      <p class="card__title">Generated Teams</p>
+
+      <div id="results-inner">
+        <!-- Populated by JS -->
+      </div>
+
+      <!-- Action row (shown after generation) -->
+      <div id="results-actions" class="btn-row" style="display:none; margin-top:20px; border-top:1px solid var(--line); padding-top:16px;">
+        <button id="btn-reshuffle" class="btn btn--ghost" type="button">
+          🔀 Reshuffle
+        </button>
+        <button id="btn-copy" class="btn btn--success" type="button">
+          📋 Copy as text
+          <span id="copy-badge" class="copy-ok">✓ Copied!</span>
+        </button>
+      </div>
+
+      <!-- Export text area -->
+      <details style="margin-top:16px;">
+        <summary style="cursor:pointer; font-size:0.85rem; color:var(--muted); user-select:none;">
+          Show plain-text export
+        </summary>
+        <pre id="export-text" class="export-area"></pre>
+      </details>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    BTM Team Generator · Static Edition · Runs entirely in your browser · No data is sent anywhere
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
