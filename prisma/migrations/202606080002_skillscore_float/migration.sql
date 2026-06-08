@@ -1,0 +1,3 @@
+ALTER TABLE "Participant"
+  ALTER COLUMN "skillScore" TYPE DOUBLE PRECISION
+  USING "skillScore"::DOUBLE PRECISION;

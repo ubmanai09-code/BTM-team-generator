@@ -1,0 +1,1 @@
+self.__NEXT_FONT_MANIFEST="{\"pages\":{},\"app\":{\"/workspaces/BTM-team-generator/apps/web/app/layout\":[\"static/media/a6ecd16fa044d500-s.p.woff2\",\"static/media/1755441e3a2fa970-s.p.woff2\",\"static/media/5311210258c05328-s.p.woff2\",\"static/media/dc1a31dd116e0329-s.p.woff2\"]},\"appUsingSizeAdjust\":true,\"pagesUsingSizeAdjust\":false}"

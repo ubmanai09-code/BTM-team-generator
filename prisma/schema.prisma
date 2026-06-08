@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  female
+  male
+  non_binary
+  prefer_not_to_say
+}
+
+model Participant {
+  id               String    @id @default(cuid())
+  displayName      String
+  skillScore       Float
+  experienceMonths Int
+  preferredRoles   String[]
+  gender           Gender
+  tags             String[]
+  isAvailable      Boolean   @default(true)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  teamMembers TeamMember[]
+}
+
+model TeamGenerationRun {
+  id                       String      @id @default(cuid())
+  mode                     String
+  fairnessScore            Float
+  averageDeviation         Float
+  standardDeviation        Float
+  highestLowestGap         Float
+  genderDistributionValid  Boolean
+  warnings                 String[]
+  createdAt                DateTime    @default(now())
+
+  teams Team[]
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  runId     String
+  createdAt DateTime @default(now())
+
+  run     TeamGenerationRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  members TeamMember[]
+}
+
+model TeamMember {
+  teamId        String
+  participantId String
+  createdAt     DateTime @default(now())
+
+  team        Team        @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  participant Participant @relation(fields: [participantId], references: [id], onDelete: Restrict)
+
+  @@id([teamId, participantId])
+}

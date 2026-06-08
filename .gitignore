@@ -1,0 +1,9 @@
+node_modules
+.next
+dist
+coverage
+.env
+*.log
+pnpm-lock.yaml
+package-lock.json
+.prisma
