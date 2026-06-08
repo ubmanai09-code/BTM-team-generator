@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BTM Team Generator</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="header">
+        <h1>BTM Team Generator</h1>
+        <p>Static, browser-only team generation for fast deployment.</p>
+      </header>
+
+      <section class="card">
+        <label for="participants">Participants (one per line, comma, or semicolon separated)</label>
+        <textarea
+          id="participants"
+          rows="12"
+          placeholder="Alice\nBob\nCharlie\nDana"
+        ></textarea>
+
+        <div class="controls-grid">
+          <label>
+            Number of Teams
+            <input id="teamCount" type="number" min="1" placeholder="e.g. 3" />
+          </label>
+
+          <label>
+            Team Size
+            <input id="teamSize" type="number" min="1" placeholder="e.g. 4" />
+          </label>
+        </div>
+
+        <p class="hint">
+          Enter at least one value. If both are set, team count is treated as priority and team size is used as guidance.
+        </p>
+
+        <div class="actions">
+          <button id="generateBtn">Generate Teams</button>
+          <button id="reshuffleBtn" class="secondary" disabled>Reshuffle</button>
+          <button id="copyBtn" class="secondary" disabled>Copy Results</button>
+          <button id="exportBtn" class="secondary" disabled>Export .txt</button>
+        </div>
+
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+
+      <section class="card" id="resultsCard">
+        <h2>Generated Teams</h2>
+        <div id="results" class="results empty">No teams generated yet.</div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
