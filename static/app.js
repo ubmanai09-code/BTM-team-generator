@@ -295,24 +295,32 @@ function doReshuffle() {
 function doCopy() {
   if (!lastResult) return;
   const text = buildExportText(lastResult.teams, lastResult.unassigned);
-  navigator.clipboard
-    .writeText(text)
-    .then(function () {
-      const badge = el("copy-badge");
-      if (!badge) return;
-      badge.classList.add("visible");
-      setTimeout(function () {
-        badge.classList.remove("visible");
-      }, 2000);
-    })
-    .catch(function () {
-      // fallback: select the textarea
-      const area = el("export-text");
-      if (area) {
-        area.select();
-        document.execCommand("copy");
-      }
+  const badge = el("copy-badge");
+
+  function showBadge(msg) {
+    if (!badge) return;
+    badge.textContent = msg || "✓ Copied!";
+    badge.classList.add("visible");
+    setTimeout(function () {
+      badge.classList.remove("visible");
+      badge.textContent = "✓ Copied!";
+    }, 2500);
+  }
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showBadge, function () {
+      showBadge("⚠ Copy failed — use the text area below");
     });
+  } else {
+    // Clipboard API unavailable: tell the user to use the plain-text area
+    showBadge("⚠ Use the text area below");
+    const area = el("export-text");
+    if (area) {
+      const details = area.closest("details");
+      if (details) details.open = true;
+      area.focus();
+    }
+  }
 }
 
 /* ── Clear / reset ───────────────────────────────── */
